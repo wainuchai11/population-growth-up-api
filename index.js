@@ -2,12 +2,14 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const csv = require("csv-parser");
+const cors = require("cors");
 
 const app = express();
-const port = 6000;
+app.use(cors());
+const port = 3001;
 
 app.get("/api/populationDemography", (req, res) => {
-  const results = [];
+  const results = {};
   const csvFilePath = path.join(
     __dirname,
     "public",
@@ -16,9 +18,21 @@ app.get("/api/populationDemography", (req, res) => {
 
   fs.createReadStream(csvFilePath)
     .pipe(csv())
-    .on("data", (data) => results.push(data))
+    .on("data", (data) => {
+      const countryName = data["Country name"];
+      if (!results[countryName]) {
+        results[countryName] = {
+          id: Object.keys(results).length + 1,
+          country_name: countryName,
+          populations: [],
+          years: [],
+        };
+      }
+      results[countryName].populations.push(parseInt(data["Population"]));
+      results[countryName].years.push(parseInt(data["Year"]));
+    })
     .on("end", () => {
-      res.json(results);
+      res.json(Object.values(results));
     });
 });
 
